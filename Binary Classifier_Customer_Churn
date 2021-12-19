@@ -1,0 +1,80 @@
+
+# ANN - Customer Churn Binary Classifier
+
+# Import Libraries
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split 
+from sklearn.metrics import confusion_matrix, accuracy_score
+
+# Import Dataset
+dataset = pd.read_csv('Churn_Modelling.csv')
+
+# Create Matrix of Features and Dependent Variable Vector
+X = dataset.iloc[:, 3:-1].values
+y = dataset.iloc[:, -1].values
+
+# Part 1 - Data Preprocessing: No Missing Data
+
+# Label Encoding Categorical Data: Gender
+le = LabelEncoder()
+X[:, 2] = le.fit_transform(X[:, 2])
+
+# OneHotEncoding: Geography
+ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [1])], remainder='passthrough')
+X = np.array(ct.fit_transform(X))
+
+# Split Dataset into Train and Test Sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+
+# Feature Scaling: Compulsory for Deep Learning/Neural Networks, Includes Dummy Variables
+sc = StandardScaler()
+X_train = sc.fit_transform(X_train)
+X_test = sc.transform(X_test)
+
+
+# Part 2 - Build ANN
+
+# Initialize ANN
+ann = tf.keras.models.Sequential()
+
+# Add Input Layer and First Hidden Layer
+ann.add(tf.keras.layers.Dense(units=6, activation='relu'))
+
+# Add Second Hidden Layer
+ann.add(tf.keras.layers.Dense(units=6, activation='relu'))
+
+# Add Output Layer
+ann.add(tf.keras.layers.Dense(units=1, activation='sigmoid'))
+
+
+# Part 3 - Train ANN
+
+# Compile ANN: Optimizer and Loss Function
+ann.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Train ANN on Training Set
+ann.fit(X_train, y_train, batch_size=32, epochs=100)
+
+# Part 4 - Make Predictions and Evaluate Model
+
+# Predict Single Observation Result
+# Geography = France, Credit Score = 600, Gender = Male, Age = 40, Tenure = 3
+# Balance = 60000, Number Products = 2, Has Credit Card = Yes, Active Member = Yes, Salary = 50000
+prediction = ann.predict(sc.transform([[1, 0, 0, 600, 1, 40, 3, 60000, 2, 1, 1, 50000]])) > 0.5
+
+# Predict Test Set Results
+y_pred = ann.predict(X_test)
+y_pred = (y_pred > 0.5)
+test_pred = np.concatenate((y_pred.reshape(len(y_pred), 1), y_test.reshape(len(y_test), 1)), 1)
+
+# Confusion Matrix: Final Accuracy
+cm = confusion_matrix(y_test, y_pred)
+ac_s = accuracy_score(y_test, y_pred)
+
